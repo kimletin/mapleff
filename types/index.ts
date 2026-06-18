@@ -1,5 +1,5 @@
 export type EpicDungeonZone = '하이마운틴' | '앵컴' | '악몽선경';
-export type SundayType = '없음' | '기본' | '스페셜';
+export type SundayType = '평일' | '썬데이' | '스페셜';
 
 export interface MobGroup {
   level: number;

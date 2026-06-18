@@ -73,7 +73,7 @@ const DEFAULT_INPUTS: InputValues = {
   priceSolErda: 7_100_000,
   useSolErda: true,
   epicDungeonZone: '하이마운틴',
-  sunday: '없음',
+  sunday: '평일',
   boosterRate: 0.5,
 };
 

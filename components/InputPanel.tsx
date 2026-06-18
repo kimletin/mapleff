@@ -235,8 +235,8 @@ export default function InputPanel({ inputs, onChange }: Props) {
             <label className="text-sm text-gray-700 dark:text-zinc-300 whitespace-nowrap flex-1">썬데이 몬파</label>
             <div className="flex gap-1">
               {([
-                { val: '없음',   label: '평일',   tip: null },
-                { val: '기본',   label: '썬데이', tip: '+50%' },
+                { val: '평일',   label: '평일',   tip: null },
+                { val: '썬데이', label: '썬데이', tip: '+50%' },
                 { val: '스페셜', label: '스페셜', tip: '+300%' },
               ] as const).map(({ val, label, tip }) => (
                 <div key={val} className="relative group flex items-center">
