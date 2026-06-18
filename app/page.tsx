@@ -406,7 +406,7 @@ export default function Home() {
           onConfirm={handleCharacterConfirm}
           onClose={isFirstVisit ? undefined : () => setShowSearchModal(false)}
           existingOcids={charMetas.filter(m => m?.ocid).map(m => m!.ocid!)}
-          existingNames={charMetas.filter(m => m?.name).map(m => m!.name)}
+          existingNames={presetNames}
         />
       )}
       <header className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-600 sticky top-0 z-10 shadow-sm">
