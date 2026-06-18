@@ -536,7 +536,6 @@ interface Props {
   slotKey?: number;
 }
 
-type SundayType = '평일' | '썬데이' | '스페셜';
 const SUNDAY_MULT: Record<SundayType, number> = { '평일': 1, '썬데이': 1.5, '스페셜': 4 };
 
 export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBonus, epicDungeonBonus = 0, epicDungeonBonuses = [], todayExpRate, slotKey }: Props) {
@@ -1499,22 +1498,18 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-sm text-gray-500 dark:text-zinc-400 shrink-0">썬데이</span>
                         <div className="flex gap-1">
-                          {([
-                            { val: '평일',   label: '평일' },
-                            { val: '썬데이', label: '썬데이' },
-                            { val: '스페셜', label: '스페셜' },
-                          ]).map(({ val, label }) => (
+                          {(['평일', '썬데이', '스페셜'] as const).map(t => (
                             <button
-                              key={val}
-                              onClick={() => setSimSunday(val)}
+                              key={t}
+                              onClick={() => setSimSunday(t)}
                               className={
                                 'px-2 py-0 h-[24px] text-[12px] font-medium rounded border-2 transition-colors cursor-pointer ' +
-                                (simSunday === val
+                                (simSunday === t
                                   ? 'bg-orange-500 border-orange-500 text-white'
                                   : 'bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-600 text-gray-600 dark:text-zinc-400 hover:border-orange-400 dark:hover:border-orange-400')
                               }
                             >
-                              {label}
+                              {t}
                             </button>
                           ))}
                         </div>

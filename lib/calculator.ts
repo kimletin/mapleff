@@ -103,7 +103,7 @@ export function getMonsterParkExp(
 ): number {
   const zone = getMonsterParkZone(charLevel);
   const base = MONSTER_PARK_EXP[zone] ?? 0;
-  const sundayBonus = sunday === '기본' ? 0.5 : sunday === '스페셜' ? 3.0 : 0;
+  const sundayBonus = sunday === '썬데이' ? 0.5 : sunday === '스페셜' ? 3.0 : 0;
   return base * (1 + sundayBonus + monsterParkBonus / 100);
 }
 
