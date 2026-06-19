@@ -151,13 +151,13 @@ export default function InputPanel({ inputs, onApply }: Props) {
                 {toTimeStr(draft.dailySessions)}
               </span>
               <button
-                onClick={() => set('dailySessions', Math.max(1, draft.dailySessions - 1))}
-                className="w-5 h-5 flex items-center justify-center text-[10px] text-gray-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-orange-400 cursor-pointer border border-gray-300 dark:border-zinc-600 rounded hover:border-orange-400 dark:hover:border-orange-400"
-              >▼</button>
-              <button
                 onClick={() => set('dailySessions', Math.min(48, draft.dailySessions + 1))}
                 className="w-5 h-5 flex items-center justify-center text-[10px] text-gray-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-orange-400 cursor-pointer border border-gray-300 dark:border-zinc-600 rounded hover:border-orange-400 dark:hover:border-orange-400"
               >▲</button>
+              <button
+                onClick={() => set('dailySessions', Math.max(1, draft.dailySessions - 1))}
+                className="w-5 h-5 flex items-center justify-center text-[10px] text-gray-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-orange-400 cursor-pointer border border-gray-300 dark:border-zinc-600 rounded hover:border-orange-400 dark:hover:border-orange-400"
+              >▼</button>
             </div>
           </div>
           <div className="flex items-center gap-2 py-1">
