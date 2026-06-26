@@ -497,10 +497,10 @@ export default function Home() {
 
   const currentOcid = charMetas[activePreset]?.ocid ?? null;
 
-  if (!mounted) return <div className="min-h-screen bg-gray-50 dark:bg-black" />;
+  if (!mounted) return <div className="min-h-dvh bg-gray-50 dark:bg-black" />;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-black overflow-hidden">
+    <div className="h-dvh flex flex-col bg-gray-50 dark:bg-black overflow-hidden">
       {showSearchModal && (
         <CharacterSearchModal
           onConfirm={handleCharacterConfirm}
