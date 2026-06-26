@@ -101,7 +101,7 @@ export default function ItemName({ name }: { name: string }) {
         {iconEl}
         몬스터파크
         {variant && (
-          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ml-1 ${variantCls ?? 'bg-fuchsia-500 text-white'}`}>{variant}</span>
+          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ml-1 ${variantCls ?? 'bg-fuchsia-500 text-white'}`}>{variant === '스페셜' ? '스페셜썬데이' : variant}</span>
         )}
       </>
     );
