@@ -23,6 +23,12 @@
 - 수정 전 항상 `assert old in data`로 패턴 존재 여부를 확인한다.
 - 수정 후 항상 `npx tsc --noEmit`으로 타입 에러를 확인한다.
 
+## 검증 / 서버 실행 규칙
+
+- **dev 서버나 preview 도구를 직접 띄우지 않는다.** 사용자가 자기 dev 서버를 띄워 두고 작업한다.
+- **node 프로세스를 전체 종료하지 않는다.** 특히 `taskkill /IM node.exe` 류는 사용자 dev 서버까지 죽이므로 절대 금지.
+- 변경 검증은 `npx tsc --noEmit`(또는 `npm run build`)로 끝낸다. 화면 확인이 필요하면 사용자에게 맡기고 말로 설명한다.
+
 ## 기술 스택
 
 - Next.js App Router, TypeScript, Tailwind CSS v4

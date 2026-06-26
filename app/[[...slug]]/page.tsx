@@ -214,6 +214,7 @@ export default function Home() {
     } else {
       // 알 수 없는 주소면 404
       setNotFound(true);
+      document.title = '페이지를 찾을 수 없습니다 | 하루1소재';
     }
 
     const savedSlots = parseInt(localStorage.getItem(NUM_SLOTS_KEY) ?? '');
@@ -526,10 +527,7 @@ export default function Home() {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
           >
             <img src="/icon.png" alt="icon" className="w-8 h-8" />
-            <div className="text-left">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">하루1소재</h1>
-              <p className="text-xs text-gray-400 dark:text-zinc-500">메이플스토리 경험치의 모든 것</p>
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">하루<span className="text-orange-500">1소재</span></h1>
           </button>
           <div className="flex items-center gap-3">
             <nav className="flex flex-wrap gap-1">
@@ -559,7 +557,7 @@ export default function Home() {
 
       <div id="app-scroll" className="flex-1 min-h-0 overflow-y-auto bg-gray-50 dark:bg-black" style={{ scrollbarGutter: 'stable' }}>
       <div className="min-h-full flex flex-col">
-      <div className="flex-1">
+      <div className="flex-1 pb-10">
       {notFound ? (
         <div className="flex flex-col items-center justify-center gap-2 text-center px-4 py-24">
           <img src="/404.png" alt="404" />
@@ -571,10 +569,24 @@ export default function Home() {
           >메인으로</button>
         </div>
       ) : isHome ? (
-      <div className="flex flex-col items-center justify-center gap-8 px-4 py-12 text-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">하루1소재</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">메이플스토리 경험치의 모든 것</p>
+      <div className="flex flex-col items-center justify-center gap-4 px-4 py-6 text-center">
+        <div className="relative w-[905px] h-[300px] rounded-2xl overflow-hidden shadow-sm">
+          <img
+            src={`/main/${encodeURIComponent('main banner')}.jpg`}
+            alt="하루1소재"
+            className="absolute inset-0 w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-black/25" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+            <h2
+              className="text-5xl font-extrabold tracking-tight text-white"
+              style={{ textShadow: '0 2px 12px rgba(0,0,0,0.9)' }}
+            >하루<span className="text-orange-500">1소재</span></h2>
+            <p
+              className="text-base font-medium text-white/90"
+              style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
+            >메이플스토리 경험치 효율 시뮬레이터</p>
+          </div>
         </div>
         <div className="grid grid-cols-5 gap-4 w-[905px]">
           {TABS.map(t => (
