@@ -333,7 +333,7 @@ export default function CharacterCard({ name, level, meta, onMetaUpdate, onToday
         )}
       </div>
 
-      <div className="relative flex items-stretch h-[185px]">
+      <div className="relative flex items-stretch h-[208px]">
         {hasApi && (
           <div className="absolute top-2 left-2 z-10 flex items-start gap-1.5">
             <button
@@ -360,8 +360,8 @@ export default function CharacterCard({ name, level, meta, onMetaUpdate, onToday
           </div>
         )}
         {/* 좌측: 캐릭터 정보 */}
-        <div className="flex flex-col px-4 flex-1 min-w-0 pt-1 pb-5">
-          <div className="flex items-center justify-center gap-5 flex-1">
+        <div className="flex flex-col px-4 flex-1 min-w-0 justify-center gap-4">
+          <div className="flex items-center justify-center gap-5">
             <div className="w-24 h-24 rounded-xl shrink-0 overflow-hidden">
               {meta?.image ? (
                 <img src={meta.image} alt={name} className="w-full h-full object-contain scale-[3]" />
@@ -371,7 +371,15 @@ export default function CharacterCard({ name, level, meta, onMetaUpdate, onToday
             </div>
 
             <div className="min-w-0 shrink-0">
-              <div className="flex items-baseline gap-1.5 mb-1.5">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                {meta?.world && (
+                  <img
+                    src={`/worlds/${encodeURIComponent(meta.world.startsWith('챌린저스') ? '챌린저스' : meta.world)}.webp`}
+                    alt=""
+                    className="w-4 h-4 object-contain shrink-0 -mr-0.5"
+                    onError={e => { e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
                 <p className="text-base font-bold text-gray-900 dark:text-zinc-100">{name}</p>
                 {meta?.world && <span className="text-xs text-gray-400 dark:text-zinc-500 shrink-0">{meta.world}</span>}
               </div>
@@ -426,7 +434,7 @@ export default function CharacterCard({ name, level, meta, onMetaUpdate, onToday
 
         {/* 우측: 경험치 히스토리 */}
         <div className="w-[44%] shrink-0 px-5 py-2 min-w-0 flex flex-col">
-          <p className="text-xs text-gray-700 dark:text-zinc-500 mb-2 mt-5 px-2">
+          <p className="text-xs text-gray-700 dark:text-zinc-500 mb-2 mt-7 px-2">
             경험치 히스토리(7일)
             {!hasApi && <span className="ml-1 text-gray-300 dark:text-zinc-600">· API 미연동</span>}
           </p>
