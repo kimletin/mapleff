@@ -576,10 +576,10 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">하루1소재</h2>
           <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">메이플스토리 경험치의 모든 것</p>
         </div>
-        <div className="grid grid-cols-5 gap-4 w-full max-w-[760px]">
+        <div className="grid grid-cols-5 gap-4 w-[905px]">
           {TABS.map(t => (
             <button key={t} onClick={() => handleTabChange(t)}
-              className="aspect-square rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm hover:border-orange-400 hover:shadow transition-all cursor-pointer text-sm font-semibold text-gray-700 dark:text-zinc-200 flex flex-col items-center justify-center gap-2">
+              className="h-24 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm hover:border-orange-400 hover:shadow transition-all cursor-pointer text-sm font-semibold text-gray-700 dark:text-zinc-200 flex flex-col items-center justify-center gap-2">
               <span className="w-12 h-12 flex items-center justify-center">
                 <img src={`/main/${encodeURIComponent(t)}.png`} alt="" className="max-w-full max-h-full object-contain" />
               </span>
