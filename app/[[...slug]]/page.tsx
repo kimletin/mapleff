@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { InputValues, MobGroup } from '@/types';
 import { calcAllItems } from '@/lib/calculator';
 import CharacterInfoModal from '@/components/CharacterInfoModal';
@@ -200,8 +200,9 @@ export default function Home() {
   charMetasRef.current = charMetas;
   const refreshCharRef = useRef<(presetIdx: number) => void>(() => {});
 
-  useEffect(() => {
-    const slug = window.location.pathname.replace(/^\//, '');
+  // URL → 화면 상태 매핑 (마운트 + 뒤로/앞으로 공용)
+  const applyRoute = useCallback((pathname: string) => {
+    const slug = pathname.replace(/^\//, '');
     const parts = slug.split('/');
     const tabSlug = parts[0];
 
@@ -215,19 +216,29 @@ export default function Home() {
       }
     }
     if (slug === '') {
-      setIsHome(true);
+      setIsHome(true); setIsPrivacy(false); setNotFound(false);
       document.title = '하루1소재';
     } else if (slug === 'privacy') {
-      setIsPrivacy(true);
+      setIsPrivacy(true); setIsHome(false); setNotFound(false);
       document.title = '개인정보처리방침 | 하루1소재';
     } else if (tab) {
-      setActiveTab(tab);
+      setActiveTab(tab); setIsHome(false); setIsPrivacy(false); setNotFound(false);
       document.title = `${tab} | 하루1소재`;
     } else {
-      // 알 수 없는 주소면 404
-      setNotFound(true);
+      setNotFound(true); setIsHome(false); setIsPrivacy(false);
       document.title = '페이지를 찾을 수 없습니다 | 하루1소재';
     }
+  }, []);
+
+  // 뒤로/앞으로 가기 시 URL에 맞춰 화면 동기화
+  useEffect(() => {
+    const onPop = () => applyRoute(window.location.pathname);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [applyRoute]);
+
+  useEffect(() => {
+    applyRoute(window.location.pathname);
 
     const savedSlots = parseInt(localStorage.getItem(NUM_SLOTS_KEY) ?? '');
     if (!isNaN(savedSlots)) setNumSlots(Math.min(Math.max(savedSlots, 1), NUM_PRESETS));
@@ -272,7 +283,8 @@ export default function Home() {
     setIsHome(false);
     setActiveTab(tab);
     document.title = `${tab} | 하루1소재`;
-    window.history.replaceState({}, '', '/' + TAB_PARAM[tab]);
+    const url = '/' + TAB_PARAM[tab];
+    if (window.location.pathname !== url) window.history.pushState({}, '', url);
   };
 
   const goHome = () => {
@@ -280,7 +292,7 @@ export default function Home() {
     setIsPrivacy(false);
     setIsHome(true);
     document.title = '하루1소재';
-    window.history.replaceState({}, '', '/');
+    if (window.location.pathname !== '/') window.history.pushState({}, '', '/');
     document.getElementById('app-scroll')?.scrollTo(0, 0);
   };
 
@@ -289,7 +301,7 @@ export default function Home() {
     setIsHome(false);
     setIsPrivacy(true);
     document.title = '개인정보처리방침 | 하루1소재';
-    window.history.replaceState({}, '', '/privacy');
+    if (window.location.pathname !== '/privacy') window.history.pushState({}, '', '/privacy');
     document.getElementById('app-scroll')?.scrollTo(0, 0);
   };
 
