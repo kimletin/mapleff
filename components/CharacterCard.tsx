@@ -1,11 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CharMeta } from '@/types';
 import TooltipWrapper from '@/components/TooltipWrapper';
 import { LEVEL_EXP } from '@/data/levelExp';
+import type { CharMeta } from '@/types';
 
-interface HistoryPoint {
+export interface HistoryPoint {
   date: string;
   expRate: number;
   level: number;
@@ -19,7 +18,7 @@ interface Slot {
   exp: number | null;
 }
 
-interface Ranking {
+export interface Ranking {
   overall: number | null;
   world: number | null;
   class: number | null;
@@ -29,23 +28,11 @@ interface Props {
   name: string;
   level: number;
   meta: CharMeta | null;
-  onMetaUpdate?: (patch: Partial<CharMeta>) => void;
-  onTodayLoaded?: (expRate: number | null) => void;
-  onCharLevelUpdate?: (level: number) => void;
   onEditInfo?: () => void;
   isEmpty?: boolean;
-}
-
-const CHAR_CACHE_KEY = (ocid: string) => `maple-char-${ocid}`;
-const REFRESH_COOLDOWN = 1 * 60 * 1000; // 1분
-
-
-function formatLastUpdated(savedAt: number): string {
-  const diff = Math.floor((Date.now() - savedAt) / 1000);
-  if (diff < 60) return '방금 전';
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  return `${Math.floor(diff / 86400)}일 전`;
+  history: HistoryPoint[];
+  ranking: Ranking | null;
+  loading: boolean;
 }
 
 function kstDate(daysAgo: number): string {
@@ -129,174 +116,10 @@ function computeDelta(prev: Slot | null, slot: Slot): { deltaRate: number; delta
   return { deltaRate, deltaExp };
 }
 
-export default function CharacterCard({ name, level, meta, onMetaUpdate, onTodayLoaded, onCharLevelUpdate, onEditInfo, isEmpty }: Props) {
-  const [history, setHistory] = useState<HistoryPoint[]>([]);
-  const [ranking, setRanking] = useState<Ranking | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
-  const [cooldownLeft, setCooldownLeft] = useState(0);
-  const [lastUpdatedLabel, setLastUpdatedLabel] = useState<string | null>(null);
-
-  const refreshingRef = useRef(false);
-  const lastRefreshedAtRef = useRef<number | null>(null);
-  const refreshedAtMap = useRef<Record<string, number>>({});
-
+export default function CharacterCard({ name, level, meta, onEditInfo, isEmpty, history, ranking, loading }: Props) {
   const hasApi = !!meta?.ocid;
-  const today = kstDate(0);
-  const todayData = history.find(p => p.date === today) ?? null;
+  const todayData = history.find(p => p.date === kstDate(0)) ?? null;
   const slots = computeSlots(history);
-
-  // 새로고침 — 히스토리 + 랭킹 전체 fetch
-  const doRefresh = useCallback(async () => {
-    if (!meta?.ocid || refreshingRef.current) return;
-    if (lastRefreshedAtRef.current !== null && Date.now() - lastRefreshedAtRef.current < REFRESH_COOLDOWN) return;
-
-    const ocid = meta.ocid;
-    setRefreshing(true);
-
-    try {
-      const rankParams = new URLSearchParams({ ocid });
-      if (meta.world) rankParams.set('world', meta.world);
-      if (meta.class) rankParams.set('class', meta.class);
-
-      const [histData, rankData, imageData, skillData] = await Promise.all([
-        fetch(`/api/character/history?ocid=${encodeURIComponent(ocid)}`).then(r => r.json()),
-        fetch(`/api/character/ranking?${rankParams}`).then(r => r.json()),
-        fetch(`/api/character?ocid=${encodeURIComponent(ocid)}`).then(r => r.json()),
-        fetch(`/api/character/skill?ocid=${encodeURIComponent(ocid)}`).then(r => r.json()),
-      ]);
-
-      // 소스별 성공 판정 (하나가 실패해도 나머지는 독립적으로 반영)
-      const histOk  = Array.isArray(histData);
-      const rankOk  = rankData && typeof rankData === 'object' && rankData.error === undefined;
-      const imageOk = imageData && imageData.image !== undefined;
-      const skillOk = skillData && skillData.monsterParkBonus !== undefined;
-
-      // 표시 갱신 — 성공한 것만 (실패 시 기존 값 유지)
-      if (histOk) {
-        const hist: HistoryPoint[] = histData;
-        const todayPoint = hist.find(p => p.date === kstDate(0)) ?? null;
-        setHistory(hist);
-        onTodayLoaded?.(todayPoint?.expRate ?? null);
-      }
-      if (rankOk) setRanking(rankData);
-
-      // 메타(이미지/직업/월드/길드/보약/레벨) — 히스토리와 무관하게 각자 성공 시 저장
-      if (onMetaUpdate && (imageOk || skillOk)) {
-        const metaUpdate: Record<string, unknown> = {};
-        if (imageOk) {
-          metaUpdate.imageUpdatedAt = Date.now();
-          metaUpdate.image = imageData.image;
-          if (imageData.class !== undefined) metaUpdate.class = imageData.class;
-          if (imageData.world !== undefined) metaUpdate.world = imageData.world;
-          if (imageData.guild !== undefined) metaUpdate.guild = imageData.guild;
-          if (imageData.dateCreate !== undefined) metaUpdate.dateCreate = imageData.dateCreate;
-        }
-        if (skillOk) {
-          metaUpdate.skillUpdatedAt = Date.now();
-          metaUpdate.monsterParkBonus = skillData.monsterParkBonus;
-          metaUpdate.epicDungeonBonus = skillData.epicDungeonBonus;
-          metaUpdate.monsterParkBonuses = skillData.monsterParkBonuses ?? [];
-          metaUpdate.epicDungeonBonuses = skillData.epicDungeonBonuses ?? [];
-          metaUpdate.treasureBonus = skillData.treasureBonus;
-          metaUpdate.treasureBonuses = skillData.treasureBonuses ?? [];
-        }
-        onMetaUpdate(metaUpdate);
-      }
-      if (onCharLevelUpdate && imageOk && imageData.level != null) {
-        onCharLevelUpdate(imageData.level);
-      }
-
-      // 쿨다운/최근 업데이트 라벨은 히스토리 성공 시에만 시작 (부분 실패 시 즉시 재시도 허용)
-      if (histOk) {
-        const savedAt = Date.now();
-        refreshedAtMap.current[ocid] = savedAt;
-        setLastRefreshedAt(savedAt);
-        setLastUpdatedLabel('방금 전');
-      }
-
-      // 캐시(history/ranking) — 성공한 항목만 갱신, 실패 항목은 기존 캐시 유지
-      if (histOk || rankOk) {
-        let prevCache: { savedAt?: number; history?: HistoryPoint[]; ranking?: Ranking | null } = {};
-        try {
-          const raw = localStorage.getItem(CHAR_CACHE_KEY(ocid));
-          if (raw) prevCache = JSON.parse(raw);
-        } catch {}
-        const cache = {
-          savedAt: histOk ? Date.now() : (prevCache.savedAt ?? Date.now()),
-          history: histOk ? histData : (prevCache.history ?? []),
-          ranking: rankOk ? rankData : (prevCache.ranking ?? null),
-        };
-        try { localStorage.setItem(CHAR_CACHE_KEY(ocid), JSON.stringify(cache)); } catch {}
-      }
-    } catch {}
-    finally {
-      setRefreshing(false);
-    }
-  }, [meta?.ocid, meta?.world, meta?.class, onTodayLoaded, onMetaUpdate]);
-
-  // ref 동기화 (렌더 중 즉시 할당)
-  refreshingRef.current = refreshing;
-  lastRefreshedAtRef.current = lastRefreshedAt;
-
-  // 쿨다운 카운트다운
-  useEffect(() => {
-    if (lastRefreshedAt === null) return;
-    const tick = () => {
-      const left = Math.max(0, REFRESH_COOLDOWN - (Date.now() - lastRefreshedAt));
-      setCooldownLeft(left);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [lastRefreshedAt]);
-
-
-  // 캐시 로드 (마운트/슬롯 전환 시) — 캐시 없으면 바로 fetch
-  useEffect(() => {
-    if (!meta?.ocid) {
-      setHistory([]); setRanking(null); setLastRefreshedAt(null);
-      onTodayLoaded?.(null);
-      return;
-    }
-    const ocid = meta.ocid;
-
-    try {
-      const raw = localStorage.getItem(CHAR_CACHE_KEY(ocid));
-      if (raw) {
-        const cache = JSON.parse(raw);
-        const hist: HistoryPoint[] = cache.history ?? [];
-        const todayPoint = hist.find(p => p.date === kstDate(0)) ?? null;
-        setHistory(hist);
-        setRanking(cache.ranking ?? null);
-        // 이 세션에서 새로고침한 기록이 있으면 그 시간 우선, 없으면 캐시 savedAt
-        const resolvedAt = refreshedAtMap.current[ocid] ?? cache.savedAt ?? null;
-        lastRefreshedAtRef.current = resolvedAt;
-        setLastRefreshedAt(resolvedAt);
-        if (resolvedAt) setLastUpdatedLabel(formatLastUpdated(resolvedAt));
-        onTodayLoaded?.(todayPoint?.expRate ?? null);
-      } else {
-        // 캐시 없는 새 슬롯 — 쿨다운 리셋 후 즉시 fetch
-        lastRefreshedAtRef.current = null;
-        setLastRefreshedAt(null);
-        doRefresh();
-      }
-    } catch {}
-
-  }, [meta?.ocid]);
-
-  // 최근 업데이트 라벨 실시간 갱신 (1분마다)
-  useEffect(() => {
-    if (!lastRefreshedAt) return;
-    const id = setInterval(() => {
-      setLastUpdatedLabel(formatLastUpdated(lastRefreshedAt));
-    }, 60_000);
-    return () => clearInterval(id);
-  }, [lastRefreshedAt]);
-
-
-  // 새로고침 버튼 상태
-  const canRefresh = !refreshing && cooldownLeft === 0;
 
   if (isEmpty) {
     return (
@@ -334,31 +157,6 @@ export default function CharacterCard({ name, level, meta, onMetaUpdate, onToday
       </div>
 
       <div className="relative flex items-stretch h-[208px]">
-        {hasApi && (
-          <div className="absolute top-2 left-2 z-10 flex items-start gap-1.5">
-            <button
-              onClick={doRefresh}
-              disabled={!canRefresh}
-              className="w-8 h-8 flex items-center justify-center rounded bg-orange-400 dark:bg-orange-500 text-white transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {refreshing ? (
-                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-                </svg>
-              ) : (
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 4v6h-6" />
-                  <path d="M1 20v-6h6" />
-                  <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-                </svg>
-              )}
-            </button>
-            {lastUpdatedLabel && !refreshing && (
-              <span className="text-[10px] text-gray-400 dark:text-zinc-500 whitespace-nowrap">최근 업데이트: {lastUpdatedLabel}</span>
-            )}
-          </div>
-        )}
         {/* 좌측: 캐릭터 정보 */}
         <div className="flex flex-col px-4 flex-1 min-w-0 justify-center gap-4">
           <div className="flex items-center justify-center gap-5">
@@ -443,13 +241,13 @@ export default function CharacterCard({ name, level, meta, onMetaUpdate, onToday
             <div className="flex-1 flex items-center justify-center text-xs text-gray-300 dark:text-zinc-600 text-center leading-relaxed">
               수동 추가된 캐릭터는<br />히스토리를 불러올 수 없습니다
             </div>
-          ) : refreshing ? (
+          ) : loading && history.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-xs text-gray-400 dark:text-zinc-500">
               불러오는 중...
             </div>
           ) : history.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-xs text-gray-400 dark:text-zinc-500 text-center leading-relaxed">
-              갱신 버튼을 눌러<br />데이터를 불러오세요
+              데이터를 불러올 수 없습니다
             </div>
           ) : (
             <div className="relative mt-auto pt-3 mb-3 px-2">

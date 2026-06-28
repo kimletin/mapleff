@@ -14,7 +14,7 @@ import InfoCenterTab from '@/components/InfoCenterTab';
 import HomeCards from '@/components/HomeCards';
 import PrivacyTab from '@/components/PrivacyTab';
 import CharacterSearchModal, { type CharacterInfo } from '@/components/CharacterSearchModal';
-import CharacterCard from '@/components/CharacterCard';
+import CharacterCard, { type HistoryPoint, type Ranking } from '@/components/CharacterCard';
 import { SunIcon, MoonIcon } from '@/components/Icons';
 import type { CharMeta } from '@/types';
 import { getDefaultHunting } from '@/data/huntingGrounds';
@@ -30,6 +30,9 @@ const NUM_SLOTS_KEY = 'haru1sojae-num-slots';
 const CHAR_META_KEY = 'haru1sojae-char-meta';
 const NUM_PRESETS = 6;
 const DEFAULT_NUM_SLOTS = 0;
+
+const CHAR_CACHE_KEY = (ocid: string) => `maple-char-${ocid}`;
+const REFRESH_COOLDOWN = 60 * 1000; // 1분 — 진입/F5/탭전환 시 이 시간 내면 재요청 안 함(성공·실패 공통)
 
 function makeDefaultMetas(): (CharMeta | null)[] {
   return Array.from({ length: NUM_PRESETS }, () => null);
@@ -185,8 +188,17 @@ export default function Home() {
   const [notFound, setNotFound] = useState(false);
   const [isPrivacy, setIsPrivacy] = useState(false);
   const [isHome, setIsHome] = useState(false);
+  // 캐릭터 데이터(앱 레벨로 일원화) — 활성 캐릭터의 표시용 상태
+  const [charHistory, setCharHistory] = useState<HistoryPoint[]>([]);
+  const [charRanking, setCharRanking] = useState<Ranking | null>(null);
+  const [charLoading, setCharLoading] = useState(false);
   const presetsRef = useRef<InputValues[]>(makeDefaultPresets());
   const activePresetRef = useRef(0);
+  const charRefreshedAtMap = useRef<Record<string, number>>({});
+  const charFetchingRef = useRef(false);
+  const charMetasRef = useRef<(CharMeta | null)[]>(charMetas);
+  charMetasRef.current = charMetas;
+  const refreshCharRef = useRef<(presetIdx: number) => void>(() => {});
 
   useEffect(() => {
     const slug = window.location.pathname.replace(/^\//, '');
@@ -414,6 +426,128 @@ export default function Home() {
       return next;
     });
   };
+
+  // 캐릭터 데이터 갱신(앱 레벨) — 진입/F5/탭전환/슬롯전환 시 호출. 1분 쿨다운(성공·실패 공통).
+  // 매 렌더마다 최신 클로저로 재할당해 stale 클로저 방지.
+  refreshCharRef.current = async (presetIdx: number) => {
+    const meta = charMetasRef.current[presetIdx];
+    const ocid = meta?.ocid;
+    if (!ocid || charFetchingRef.current) return;
+
+    let lastAttempt = charRefreshedAtMap.current[ocid] ?? null;
+    if (lastAttempt == null) {
+      try {
+        const raw = localStorage.getItem(CHAR_CACHE_KEY(ocid));
+        if (raw) lastAttempt = JSON.parse(raw).savedAt ?? null;
+      } catch {}
+    }
+    if (lastAttempt != null && Date.now() - lastAttempt < REFRESH_COOLDOWN) return;
+
+    charRefreshedAtMap.current[ocid] = Date.now(); // 시도 시각(실패해도 쿨다운 유지)
+    charFetchingRef.current = true;
+    setCharLoading(true);
+    const isActive = presetIdx === activePreset;
+    try {
+      const rankParams = new URLSearchParams({ ocid });
+      if (meta.world) rankParams.set('world', meta.world);
+      if (meta.class) rankParams.set('class', meta.class);
+
+      const [histData, rankData, imageData, skillData] = await Promise.all([
+        fetch(`/api/character/history?ocid=${encodeURIComponent(ocid)}`).then(r => r.json()),
+        fetch(`/api/character/ranking?${rankParams}`).then(r => r.json()),
+        fetch(`/api/character?ocid=${encodeURIComponent(ocid)}`).then(r => r.json()),
+        fetch(`/api/character/skill?ocid=${encodeURIComponent(ocid)}`).then(r => r.json()),
+      ]);
+
+      const histOk  = Array.isArray(histData);
+      const rankOk  = rankData && typeof rankData === 'object' && rankData.error === undefined;
+      const imageOk = imageData && imageData.image !== undefined;
+      const skillOk = skillData && skillData.monsterParkBonus !== undefined;
+
+      if (histOk && isActive) {
+        const hist: HistoryPoint[] = histData;
+        setCharHistory(hist);
+        const todayPoint = hist.find(pt => pt.date === kstToday()) ?? null;
+        setTodayExpRate(todayPoint?.expRate ?? null);
+      }
+      if (rankOk && isActive) setCharRanking(rankData);
+
+      if (imageOk || skillOk) {
+        const metaUpdate: Record<string, unknown> = {};
+        if (imageOk) {
+          metaUpdate.imageUpdatedAt = Date.now();
+          metaUpdate.image = imageData.image;
+          if (imageData.class !== undefined) metaUpdate.class = imageData.class;
+          if (imageData.world !== undefined) metaUpdate.world = imageData.world;
+          if (imageData.guild !== undefined) metaUpdate.guild = imageData.guild;
+          if (imageData.dateCreate !== undefined) metaUpdate.dateCreate = imageData.dateCreate;
+        }
+        if (skillOk) {
+          metaUpdate.skillUpdatedAt = Date.now();
+          metaUpdate.monsterParkBonus = skillData.monsterParkBonus;
+          metaUpdate.epicDungeonBonus = skillData.epicDungeonBonus;
+          metaUpdate.monsterParkBonuses = skillData.monsterParkBonuses ?? [];
+          metaUpdate.epicDungeonBonuses = skillData.epicDungeonBonuses ?? [];
+          metaUpdate.treasureBonus = skillData.treasureBonus;
+          metaUpdate.treasureBonuses = skillData.treasureBonuses ?? [];
+        }
+        handleMetaUpdate(presetIdx, metaUpdate as Partial<CharMeta>);
+      }
+      if (imageOk && imageData.level != null) {
+        handleCharLevelUpdate(presetIdx, imageData.level);
+      }
+
+      if (histOk) {
+        charRefreshedAtMap.current[ocid] = Date.now();
+      }
+
+      if (histOk || rankOk) {
+        let prevCache: { savedAt?: number; history?: HistoryPoint[]; ranking?: Ranking | null } = {};
+        try {
+          const raw = localStorage.getItem(CHAR_CACHE_KEY(ocid));
+          if (raw) prevCache = JSON.parse(raw);
+        } catch {}
+        const cache = {
+          savedAt: histOk ? Date.now() : (prevCache.savedAt ?? Date.now()),
+          history: histOk ? histData : (prevCache.history ?? []),
+          ranking: rankOk ? rankData : (prevCache.ranking ?? null),
+        };
+        try { localStorage.setItem(CHAR_CACHE_KEY(ocid), JSON.stringify(cache)); } catch {}
+      }
+    } catch {
+      // 실패: 조용히 마지막 정상 데이터 유지. 쿨다운은 시도 시각으로 이미 설정됨.
+    } finally {
+      charFetchingRef.current = false;
+      setCharLoading(false);
+    }
+  };
+
+  // 활성 캐릭터 변경 시 캐시에서 표시 데이터 로드
+  useEffect(() => {
+    if (!mounted) return;
+    const ocid = charMetas[activePreset]?.ocid;
+    if (!ocid) {
+      setCharHistory([]); setCharRanking(null);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(CHAR_CACHE_KEY(ocid));
+      if (raw) {
+        const cache = JSON.parse(raw);
+        setCharHistory(cache.history ?? []);
+        setCharRanking(cache.ranking ?? null);
+      } else {
+        setCharHistory([]); setCharRanking(null);
+      }
+    } catch {}
+  }, [mounted, activePreset, charMetas[activePreset]?.ocid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 자동 갱신 트리거 — 캐릭터 쓰는 탭(정보센터/홈 제외) 진입·F5·탭전환·슬롯전환·캐릭터 추가 시
+  useEffect(() => {
+    if (!mounted || isHome || isPrivacy || notFound) return;
+    if (activeTab === TABS[4]) return; // 정보 센터 제외
+    refreshCharRef.current(activePreset);
+  }, [mounted, activeTab, activePreset, isHome, isPrivacy, notFound, charMetas[activePreset]?.ocid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDeleteSlot = (idx: number) => {
     if (numSlots <= 1) return;
@@ -715,10 +849,10 @@ export default function Home() {
                       name={presetNames[activePreset]}
                       level={presetsRef.current[activePreset]?.charLevel ?? inputs.charLevel}
                       meta={charMetas[activePreset]}
-                      onMetaUpdate={(patch) => handleMetaUpdate(activePreset, patch)}
-                      onTodayLoaded={(rate) => setTodayExpRate(rate ?? null)}
-                      onCharLevelUpdate={(level) => handleCharLevelUpdate(activePreset, level)}
                       isEmpty={numSlots === 0}
+                      history={charHistory}
+                      ranking={charRanking}
+                      loading={charLoading}
                     />
                   </div>
                   <EfficiencyTab inputs={inputs} onChange={handleChange} items={rankedItems} monsterParkBonus={charMetas[activePreset]?.monsterParkBonus ?? 0} />
