@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetchWithTimeout(
       `https://open.api.nexon.com/maplestory/v1/character/skill?ocid=${encodeURIComponent(ocid)}&character_skill_grade=0`,
-      { headers: { 'x-nxopen-api-key': apiKey } }
+      { headers: { 'x-nxopen-api-key': apiKey }, next: { revalidate: 60 } }
     );
 
     if (!res.ok) {

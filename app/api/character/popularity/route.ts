@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetchWithTimeout(
       `https://open.api.nexon.com/maplestory/v1/character/popularity?ocid=${encodeURIComponent(ocid)}`,
-      { headers: { 'x-nxopen-api-key': apiKey } }
+      { headers: { 'x-nxopen-api-key': apiKey }, next: { revalidate: 21600 } }
     );
     if (!res.ok) {
       return NextResponse.json({ error: '인기도 조회에 실패했습니다' }, { status: 502 });

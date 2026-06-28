@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     try {
       const charRes = await fetchWithTimeout(
         `https://open.api.nexon.com/maplestory/v1/character/basic?ocid=${encodeURIComponent(ocidParam)}`,
-        { headers }
+        { headers, next: { revalidate: 120 } }
       );
       if (!charRes.ok) {
         const { message, clientStatus } = nexonErrorMessage(charRes.status);
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
   try {
     const ocidRes = await fetchWithTimeout(
       `https://open.api.nexon.com/maplestory/v1/id?character_name=${encodeURIComponent(name)}`,
-      { headers }
+      { headers, next: { revalidate: 86400 } } // 이름→ocid는 거의 불변 → 1일 캐시
     );
 
     if (!ocidRes.ok) {
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
 
     const charRes = await fetchWithTimeout(
       `https://open.api.nexon.com/maplestory/v1/character/basic?ocid=${encodeURIComponent(ocid)}`,
-      { headers }
+      { headers, next: { revalidate: 120 } }
     );
 
     if (!charRes.ok) {

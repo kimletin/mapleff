@@ -11,7 +11,8 @@ function kstDate(daysAgo: number): string {
 async function fetchRank(apiKey: string, ocid: string, extra: string): Promise<number | null> {
   try {
     const url = `https://open.api.nexon.com/maplestory/v1/ranking/overall?date=${kstDate(1)}&ocid=${encodeURIComponent(ocid)}${extra}`;
-    const res = await fetch(url, { headers: { 'x-nxopen-api-key': apiKey } });
+    // 어제 날짜 기준 랭킹 = 하루 1회 갱신 → 6시간 캐시(전 방문자 공유)
+    const res = await fetch(url, { headers: { 'x-nxopen-api-key': apiKey }, next: { revalidate: 21600 } });
     if (!res.ok) return null;
     const data = await res.json();
     return data.ranking?.[0]?.ranking ?? null;
