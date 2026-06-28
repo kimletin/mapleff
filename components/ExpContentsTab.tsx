@@ -17,10 +17,11 @@ import TooltipWrapper from '@/components/TooltipWrapper';
 
 const LEVELS = Array.from({ length: 40 }, (_, i) => i + 260);
 
-function pct(exp: number, level: number) {
+// 퍼센트 표시 (메인 값)
+function pctNoSign(exp: number, level: number) {
   const req = LEVEL_EXP[level]?.required;
   if (!req) return '';
-  return '+' + ((exp / req) * 100).toFixed(3) + '%';
+  return ((exp / req) * 100).toFixed(3) + '%';
 }
 
 // ─── 공용 표 타입 ───────────────────────────────────────────────────────────
@@ -53,18 +54,19 @@ function SplitTable({ title, headerColor, titleColor, rows, levelLabel, valueLab
           {row.isMe && <span className={'ml-1.5 text-xs text-white px-1.5 py-0.5 rounded-full ' + row.badgeColor}>나</span>}
         </td>
         <td className={meBg + 'px-3 py-1.5 text-center ' + txt}>
-          <Num n={row.value} />
-          <span className={'text-xs ml-1 ' + sub}>({pct(row.value, row.level)})</span>
+          {pctNoSign(row.value, row.level)}
+          <span className={'text-xs ml-1 ' + sub}>(+<Num n={row.value} />)</span>
         </td>
       </>
     );
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
+    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
       <div className={'px-4 py-2.5 border-b shrink-0 ' + headerColor}>
         <h3 className={'text-sm font-semibold text-center ' + titleColor}>{title}</h3>
       </div>
+      <div className="overflow-y-auto flex-1 min-h-0">
       <table className="table-fixed text-sm border-collapse w-full">
         <colgroup>
           <col style={{width:'15%'}} /><col style={{width:'35%'}} />
@@ -87,6 +89,65 @@ function SplitTable({ title, headerColor, titleColor, rows, levelLabel, valueLab
           ))}
         </tbody>
       </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── SingleTable (단일 컬럼, 부모 높이에 맞춰 스크롤) ──────────────────────────
+function SingleTable({ title, headerColor, titleColor, rows, levelLabel, valueLabel = '경험치', fillHeight = true }: ExpTableProps & { fillHeight?: boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (activeRef.current && scrollRef.current) {
+        const container = scrollRef.current;
+        const row = activeRef.current;
+        const rowTop = row.offsetTop;
+        const rowHeight = row.offsetHeight;
+        container.scrollTop = rowTop - container.clientHeight / 2 + rowHeight / 2;
+      }
+    });
+  }, [rows]);
+
+  return (
+    <div className={'bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col' + (fillHeight ? ' h-full' : '')}>
+      <div className={'px-4 py-2.5 border-b shrink-0 ' + headerColor}>
+        <h3 className={'text-sm font-semibold text-center ' + titleColor}>{title}</h3>
+      </div>
+      <div ref={scrollRef} className="overflow-y-auto flex-1 min-h-0">
+        <table className="table-fixed text-sm border-collapse w-full">
+          <colgroup>
+            <col style={{width:'50%'}} /><col style={{width:'50%'}} />
+          </colgroup>
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-gray-100 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-600">
+              <th className="text-center px-3 py-2 text-gray-600 dark:text-zinc-400 font-bold whitespace-nowrap">{levelLabel}</th>
+              <th className="text-center px-3 py-2 text-gray-600 dark:text-zinc-400 font-bold whitespace-nowrap">{valueLabel}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => {
+              const meBg = row.isMe ? row.rowBg + ' font-bold ' : '';
+              const txt = row.isMe ? row.textColor : 'text-gray-700 dark:text-zinc-300';
+              const sub = row.isMe ? row.textColor : 'text-gray-400 dark:text-zinc-500';
+              return (
+                <tr key={row.level} ref={row.isMe ? activeRef : undefined} className={'border-b ' + (row.isMe ? '' : 'hover:bg-gray-50 dark:hover:bg-gray-700')}>
+                  <td className={meBg + 'px-3 py-1.5 text-center ' + txt}>
+                    {row.level}
+                    {row.isMe && <span className={'ml-1.5 text-xs text-white px-1.5 py-0.5 rounded-full ' + row.badgeColor}>나</span>}
+                  </td>
+                  <td className={meBg + 'px-3 py-1.5 text-center ' + txt}>
+                    {pctNoSign(row.value, row.level)}
+                    <span className={'text-xs ml-1 ' + sub}>(+<Num n={row.value} />)</span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -199,9 +260,6 @@ function DungeonTable({ title, levels, data, metacoin, charLevel, headerColor, t
                 const s1 = d.stage1 + bonusAmt;
                 const s2 = d.stage2 + bonusAmt;
 
-                const cellClass = (base: string) =>
-                  'px-4 py-1.5 text-center ' + base + (hasBonus ? ' cursor-pointer' : '');
-
                 const makeHandlers = (stage: StageKey) => hasBonus ? {
                   onMouseEnter: (e: React.MouseEvent) => setTooltip({ lv, stage, x: e.clientX, y: e.clientY }),
                   onMouseLeave: () => setTooltip(null),
@@ -217,17 +275,17 @@ function DungeonTable({ title, levels, data, metacoin, charLevel, headerColor, t
                       {lv}
                       {isMe && <span className={'ml-1.5 text-xs text-white px-1.5 py-0.5 rounded-full ' + badgeColor}>나</span>}
                     </td>
-                    <td className={cellClass(baseColor)} {...makeHandlers('stage0')}>
-                      <Num n={s0} />
-                      <span className={'text-xs ml-1 ' + subColor}>({pct(s0, lv)})</span>
+                    <td className={'px-4 py-1.5 text-center ' + baseColor}>
+                      {pctNoSign(s0, lv)}
+                      <span className={'text-xs ml-1 ' + subColor + (hasBonus ? ' cursor-pointer' : '')} {...makeHandlers('stage0')}>(+<Num n={s0} />)</span>
                     </td>
-                    <td className={cellClass(baseColor)} {...makeHandlers('stage1')}>
-                      <Num n={s1} />
-                      <span className={'text-xs ml-1 ' + subColor}>({pct(s1, lv)})</span>
+                    <td className={'px-4 py-1.5 text-center ' + baseColor}>
+                      {pctNoSign(s1, lv)}
+                      <span className={'text-xs ml-1 ' + subColor + (hasBonus ? ' cursor-pointer' : '')} {...makeHandlers('stage1')}>(+<Num n={s1} />)</span>
                     </td>
-                    <td className={cellClass(baseColor)} {...makeHandlers('stage2')}>
-                      <Num n={s2} />
-                      <span className={'text-xs ml-1 ' + subColor}>({pct(s2, lv)})</span>
+                    <td className={'px-4 py-1.5 text-center ' + baseColor}>
+                      {pctNoSign(s2, lv)}
+                      <span className={'text-xs ml-1 ' + subColor + (hasBonus ? ' cursor-pointer' : '')} {...makeHandlers('stage2')}>(+<Num n={s2} />)</span>
                     </td>
                   </tr>
                 );
@@ -662,20 +720,20 @@ function TreasureHunterTable({ monsterLevel, charLevel, treasureBonus = 0, treas
                     {isMe && <span className="ml-1 text-[9px] bg-orange-500 dark:bg-orange-700 text-white px-1 py-0.5 rounded-full">나</span>}
                   </td>
                   <td className={'px-2 py-1.5 text-center ' + baseColor}>
-                    <Num n={rare} />
-                    <span className={'text-xs ml-1 ' + subColor}>({pct(rare, charLevel)})</span>
+                    {pctNoSign(rare, charLevel)}
+                    <span className={'text-xs ml-1 ' + subColor}>(+<Num n={rare} />)</span>
                   </td>
                   <td className={'px-2 py-1.5 text-center ' + baseColor}>
-                    <Num n={epic} />
-                    <span className={'text-xs ml-1 ' + subColor}>({pct(epic, charLevel)})</span>
+                    {pctNoSign(epic, charLevel)}
+                    <span className={'text-xs ml-1 ' + subColor}>(+<Num n={epic} />)</span>
                   </td>
                   <td className={'px-2 py-1.5 text-center ' + baseColor}>
-                    <Num n={unique} />
-                    <span className={'text-xs ml-1 ' + subColor}>({pct(unique, charLevel)})</span>
+                    {pctNoSign(unique, charLevel)}
+                    <span className={'text-xs ml-1 ' + subColor}>(+<Num n={unique} />)</span>
                   </td>
                   <td className={'px-2 py-1.5 text-center ' + baseColor}>
-                    <Num n={legendary} />
-                    <span className={'text-xs ml-1 ' + subColor}>({pct(legendary, charLevel)})</span>
+                    {pctNoSign(legendary, charLevel)}
+                    <span className={'text-xs ml-1 ' + subColor}>(+<Num n={legendary} />)</span>
                   </td>
                 </tr>
               );
@@ -1024,6 +1082,14 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
   const isEpic = selected === 'epicdungeon';
   const newLayout = ['blueberry', 'vipsauna', 'expcoupon', 'mekaberry'].includes(selected);
 
+  // newLayout 4종 경험치표 props (인라인 + 모달 공용)
+  const splitProps: ExpTableProps | null =
+    selected === 'vipsauna' ? { title: 'VIP 사우나', valueLabel: '1시간 당 경험치', headerColor: 'bg-orange-200 dark:bg-orange-900/50 border-orange-200 dark:border-orange-800', titleColor: 'text-gray-800 dark:text-zinc-100', levelLabel: '레벨', rows: LEVELS.map(lv => ({ level: lv, value: VIP_SAUNA_EXP[lv] ?? 0, isMe: hasCharacter && lv === charLevel, ...commonRowProps })) }
+    : selected === 'expcoupon' ? { title: '상급 EXP 쿠폰', valueLabel: '1000개 당 경험치', headerColor: 'bg-orange-200 dark:bg-orange-900/50 border-orange-200 dark:border-orange-800', titleColor: 'text-gray-800 dark:text-zinc-100', levelLabel: '레벨', rows: LEVELS.map(lv => ({ level: lv, value: (SUPER_EXP_COUPON[lv] ?? 0) * 1000, isMe: hasCharacter && lv === charLevel, ...commonRowProps })) }
+    : selected === 'mekaberry' ? { title: '메카베리 농장', headerColor: 'bg-orange-200 dark:bg-orange-900/50 border-orange-200 dark:border-orange-800', titleColor: 'text-gray-800 dark:text-zinc-100', levelLabel: '레벨', rows: LEVELS.filter(lv => lv >= 280).map(lv => ({ level: lv, value: MEKABERRY_EXP[lv] ?? 0, isMe: hasCharacter && lv === charLevel, ...commonRowProps })) }
+    : selected === 'blueberry' ? { title: '블루베리 농장', headerColor: 'bg-orange-200 dark:bg-orange-900/50 border-orange-200 dark:border-orange-800', titleColor: 'text-gray-800 dark:text-zinc-100', levelLabel: '레벨', rows: LEVELS.map(lv => ({ level: lv, value: BLUEBERRY_EXP[lv] ?? 0, isMe: hasCharacter && lv === charLevel, ...commonRowProps })) }
+    : null;
+
   return (
     <div className="flex gap-4 items-stretch">
       {/* 좌측 메뉴 */}
@@ -1046,7 +1112,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
       </div>
 
       {/* 우측 콘텐츠 */}
-      <div className={'flex flex-1 gap-4 ' + (newLayout ? 'flex-col-reverse' : selected === 'monsterpark' ? 'flex-row-reverse' : 'items-stretch')}>
+      <div className={'flex flex-1 gap-4 ' + (newLayout ? 'flex-row-reverse ' + (selected === 'mekaberry' ? 'items-start' : 'items-stretch') : selected === 'monsterpark' ? 'flex-row-reverse' : 'items-stretch')}>
         {isEpic ? (
           /* 에픽 던전 — 전체 너비 사용 */
           <div className="flex-1 flex flex-col gap-1.5" style={{height:'664px'}}>
@@ -1094,7 +1160,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
         ) : (
           <>
             {/* 좌측 카드 */}
-            <div className={(newLayout ? '' : 'flex-1 ') + 'flex flex-col'}>
+            <div className={(newLayout ? (selected === 'mekaberry' ? 'flex-1 ' : 'relative flex-1 ') : 'flex-1 ') + 'flex flex-col'}>
               {selected === 'monsterpark' && (
                 <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col" style={{maxHeight:'664px'}}>
                   <div className="bg-orange-200 dark:bg-orange-900/50 border-b border-orange-200 dark:border-orange-800 px-4 py-2.5 shrink-0">
@@ -1130,8 +1196,8 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                                   {isMe && <span className="ml-1.5 text-xs bg-orange-500 dark:bg-orange-700 text-white px-1.5 py-0.5 rounded-full">나</span>}
                                 </td>
                                 <td className={'px-3 py-2 text-center ' + (isMe ? 'text-orange-700 font-bold' : 'text-gray-700 dark:text-zinc-300')}>
-                                  <Num n={exp} />
-                                  <span className={'text-xs ml-1 ' + subColor}>({pct(exp, charLevel)})</span>
+                                  {pctNoSign(exp, charLevel)}
+                                  <span className={'text-xs ml-1 ' + subColor}>(+<Num n={exp} />)</span>
                                 </td>
                               </tr>
                             );
@@ -1176,46 +1242,10 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                 </div>
               )}
 
-              {selected === 'vipsauna' && (
-                <SplitTable
-                  title="VIP 사우나"
-                  valueLabel="1시간 당 경험치"
-                  headerColor="bg-orange-200 dark:bg-orange-900/50 border-orange-200 dark:border-orange-800"
-                  titleColor="text-gray-800 dark:text-zinc-100"
-                  levelLabel="레벨"
-                  rows={LEVELS.map(lv => ({ level: lv, value: VIP_SAUNA_EXP[lv] ?? 0, isMe: hasCharacter && lv === charLevel, ...commonRowProps }))}
-                />
-              )}
-
-              {selected === 'expcoupon' && (
-                <SplitTable
-                  title="상급 EXP 쿠폰"
-                  valueLabel="1000개 당 경험치"
-                  headerColor="bg-orange-200 dark:bg-orange-900/50 border-orange-200 dark:border-orange-800"
-                  titleColor="text-gray-800 dark:text-zinc-100"
-                  levelLabel="레벨"
-                  rows={LEVELS.map(lv => ({ level: lv, value: (SUPER_EXP_COUPON[lv] ?? 0) * 1000, isMe: hasCharacter && lv === charLevel, ...commonRowProps }))}
-                />
-              )}
-
-              {selected === 'mekaberry' && (
-                <SplitTable
-                  title="메카베리 농장"
-                  headerColor="bg-orange-200 dark:bg-orange-900/50 border-orange-200 dark:border-orange-800"
-                  titleColor="text-gray-800 dark:text-zinc-100"
-                  levelLabel="레벨"
-                  rows={LEVELS.filter(lv => lv >= 280).map(lv => ({ level: lv, value: MEKABERRY_EXP[lv] ?? 0, isMe: hasCharacter && lv === charLevel, ...commonRowProps }))}
-                />
-              )}
-
-              {selected === 'blueberry' && (
-                <SplitTable
-                  title="블루베리 농장"
-                  headerColor="bg-orange-200 dark:bg-orange-900/50 border-orange-200 dark:border-orange-800"
-                  titleColor="text-gray-800 dark:text-zinc-100"
-                  levelLabel="레벨"
-                  rows={LEVELS.map(lv => ({ level: lv, value: BLUEBERRY_EXP[lv] ?? 0, isMe: hasCharacter && lv === charLevel, ...commonRowProps }))}
-                />
+              {newLayout && splitProps && (
+                selected === 'mekaberry'
+                  ? <SingleTable {...splitProps} fillHeight={false} />
+                  : <div className="absolute inset-0"><SingleTable {...splitProps} /></div>
               )}
 
               {selected === 'treasurehunter' && (
@@ -1258,8 +1288,8 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
             </div>
 
             {/* 시뮬레이터 카드 */}
-            {selected !== 'treasurehunter' && <div className={newLayout ? 'flex gap-4 items-stretch' : 'flex-1 self-start flex flex-col gap-4'}>
-              <div className={'bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col' + (newLayout ? ' flex-1' : '')}>
+            {selected !== 'treasurehunter' && <div className={newLayout ? 'flex-1 flex flex-col gap-4' : 'flex-1 self-start flex flex-col gap-4'}>
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
                 <div className="bg-orange-200 dark:bg-orange-900/50 border-b border-orange-200 dark:border-orange-800 px-4 py-2.5 shrink-0">
                   <h3 className="text-sm font-semibold text-center text-gray-800 dark:text-zinc-100">시뮬레이터</h3>
                 </div>
@@ -1377,7 +1407,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400">획득 경험치</span>
                         <div className="text-right">
                           {vipSimResult
-                            ? <><Num n={vipSimResult.gainedExp} className="font-bold text-orange-600 dark:text-orange-400" /><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+{vipSimResult.gainPct.toFixed(3)}%)</span></>
+                            ? <><span className="font-bold text-orange-600 dark:text-orange-400">{vipSimResult.gainPct.toFixed(3)}%</span><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+<Num n={vipSimResult.gainedExp} />)</span></>
                             : <span className="font-bold text-gray-300 dark:text-zinc-600">-</span>}
                         </div>
                       </div>
@@ -1496,7 +1526,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400">획득 경험치</span>
                         <div className="text-right">
                           {couponSimResult
-                            ? <><Num n={couponSimResult.gainedExp} className="font-bold text-orange-600 dark:text-orange-400" /><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+{couponSimResult.gainPct.toFixed(3)}%)</span></>
+                            ? <><span className="font-bold text-orange-600 dark:text-orange-400">{couponSimResult.gainPct.toFixed(3)}%</span><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+<Num n={couponSimResult.gainedExp} />)</span></>
                             : <span className="font-bold text-gray-300 dark:text-zinc-600">-</span>}
                         </div>
                       </div>
@@ -1597,7 +1627,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400">획득 경험치</span>
                         <div className="text-right">
                           {mekaSimResult
-                            ? <><Num n={mekaSimResult.gainedExp} className="font-bold text-orange-600 dark:text-orange-400" /><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+{mekaSimResult.gainPct.toFixed(3)}%)</span></>
+                            ? <><span className="font-bold text-orange-600 dark:text-orange-400">{mekaSimResult.gainPct.toFixed(3)}%</span><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+<Num n={mekaSimResult.gainedExp} />)</span></>
                             : <span className="font-bold text-gray-300 dark:text-zinc-600">-</span>}
                         </div>
                       </div>
@@ -1708,7 +1738,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400">획득 경험치</span>
                         <div className="text-right">
                           {blueSimResult
-                            ? <><Num n={blueSimResult.gainedExp} className="font-bold text-orange-600 dark:text-orange-400" /><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+{blueSimResult.gainPct.toFixed(3)}%)</span></>
+                            ? <><span className="font-bold text-orange-600 dark:text-orange-400">{blueSimResult.gainPct.toFixed(3)}%</span><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+<Num n={blueSimResult.gainedExp} />)</span></>
                             : <span className="font-bold text-gray-300 dark:text-zinc-600">-</span>}
                         </div>
                       </div>
@@ -1739,7 +1769,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         {(() => {
                           const lv = parseInt(simLevel);
                           if (lv >= 300) return <span className="text-xs text-red-400 dark:text-red-500">300레벨 미만 입력해주세요</span>;
-                          if (lv >= 260) return <span className="px-2 py-0.5 rounded bg-orange-500 text-white text-xs font-bold">{getMonsterParkZone(lv)}</span>;
+                          if (lv >= 260) return <span className="text-sm text-orange-500 dark:text-orange-400 font-bold">{getMonsterParkZone(lv)}</span>;
                           return <span className="text-xs text-red-400 dark:text-red-500">260레벨 이상 입력해주세요</span>;
                         })()}
                       </div>
@@ -1831,7 +1861,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400">획득 경험치</span>
                         <div className="text-right">
                           {simResult
-                            ? <><Num n={simResult.gainedExp} className="font-bold text-orange-600 dark:text-orange-400" /><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+{simResult.gainPct.toFixed(3)}%)</span></>
+                            ? <><span className="font-bold text-orange-600 dark:text-orange-400">{simResult.gainPct.toFixed(3)}%</span><span className="ml-1.5 text-sm text-orange-400 dark:text-orange-500">(+<Num n={simResult.gainedExp} />)</span></>
                             : <span className="font-bold text-gray-300 dark:text-zinc-600">-</span>}
                         </div>
                       </div>
@@ -1848,7 +1878,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                 </div>
               </div>
               {selected === 'mekaberry' && (
-                <div className="flex-1 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
                   <div className="bg-orange-200 dark:bg-orange-900/50 border-b border-orange-200 dark:border-orange-800 px-4 py-2.5 shrink-0">
                     <h3 className="text-sm font-semibold text-center text-gray-800 dark:text-zinc-100">목표 레벨 역산</h3>
                   </div>
@@ -1911,7 +1941,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                 </div>
               )}
               {selected === 'expcoupon' && (
-                <div className="flex-1 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
                   <div className="bg-orange-200 dark:bg-orange-900/50 border-b border-orange-200 dark:border-orange-800 px-4 py-2.5 shrink-0">
                     <h3 className="text-sm font-semibold text-center text-gray-800 dark:text-zinc-100">목표 레벨 역산</h3>
                   </div>
@@ -1983,7 +2013,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                 </div>
               )}
               {selected === 'vipsauna' && (
-                <div className="flex-1 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
                   <div className="bg-orange-200 dark:bg-orange-900/50 border-b border-orange-200 dark:border-orange-800 px-4 py-2.5 shrink-0">
                     <h3 className="text-sm font-semibold text-center text-gray-800 dark:text-zinc-100">목표 레벨 역산</h3>
                   </div>
@@ -2063,7 +2093,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                 </div>
               )}
               {selected === 'blueberry' && (
-                <div className="flex-1 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
                   <div className="bg-orange-200 dark:bg-orange-900/50 border-b border-orange-200 dark:border-orange-800 px-4 py-2.5 shrink-0">
                     <h3 className="text-sm font-semibold text-center text-gray-800 dark:text-zinc-100">목표 레벨 역산</h3>
                   </div>
@@ -2138,6 +2168,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
           </>
         )}
       </div>
+
     </div>
   );
 }
