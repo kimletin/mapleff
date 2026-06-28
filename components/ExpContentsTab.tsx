@@ -796,7 +796,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
 
 
   // 시뮬레이터 state
-  const [simLevel, setSimLevel] = useState(String(charLevel));
+  const [simLevel, setSimLevel] = useState(hasCharacter ? String(charLevel) : "");
   const [simExpPct, setSimExpPct] = useState('');
   const [simPotionBuff, setSimPotionBuff] = useState('');
   const [simBeyond, setSimBeyond] = useState(false);
@@ -805,7 +805,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
   const [simResult, setSimResult] = useState<{ gainedExp: number; gainPct: number; finalLevel: number; finalPct: number } | null>(null);
 
   // VIP 사우나 시뮬레이터 state
-  const [vipSimLevel, setVipSimLevel] = useState(String(charLevel));
+  const [vipSimLevel, setVipSimLevel] = useState(hasCharacter ? String(charLevel) : "");
   const [vipSimExpPct, setVipSimExpPct] = useState('');
   const [vipSimBeyond, setVipSimBeyond] = useState(false);
   const [vipSimMode, setVipSimMode] = useState<'목표' | '시간'>('시간');
@@ -824,7 +824,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
   const [vipRevBeyond, setVipRevBeyond] = useState(false);
   const [vipRevResult, setVipRevResult] = useState<RevStartResult | null>(null);
 
-  const [couponSimLevel, setCouponSimLevel] = useState(String(charLevel));
+  const [couponSimLevel, setCouponSimLevel] = useState(hasCharacter ? String(charLevel) : "");
   const [couponSimExpPct, setCouponSimExpPct] = useState('');
   const [couponSimBeyond, setCouponSimBeyond] = useState(false);
   const [couponSimMode, setCouponSimMode] = useState<'개수' | '목표'>('개수');
@@ -842,7 +842,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
   const [couponRevResult, setCouponRevResult] = useState<RevStartResult | null>(null);
 
   // 메카베리 농장 시뮬레이터 state
-  const [mekaSimLevel, setMekaSimLevel] = useState(String(charLevel));
+  const [mekaSimLevel, setMekaSimLevel] = useState(hasCharacter ? String(charLevel) : "");
   const [mekaSimExpPct, setMekaSimExpPct] = useState('');
   const [mekaSimMode, setMekaSimMode] = useState<'개수' | '목표'>('개수');
   const [mekaSimCount, setMekaSimCount] = useState('');
@@ -867,7 +867,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
   const [sundayType, setSundayType] = useState<SundayType>('일반');
 
   // 블루베리 농장 시뮬레이터 state
-  const [blueSimLevel, setBlueSimLevel] = useState(String(charLevel));
+  const [blueSimLevel, setBlueSimLevel] = useState(hasCharacter ? String(charLevel) : "");
   const [blueSimExpPct, setBlueSimExpPct] = useState('');
   const [blueSimBeyond, setBlueSimBeyond] = useState(false);
   const [blueSimMode, setBlueSimMode] = useState<'개수' | '목표'>('개수');
@@ -905,11 +905,12 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
     if (monsterParkBonus > 0) setSimPotionBuff(String(monsterParkBonus));
   }, [monsterParkBonus, slotKey]);
   useEffect(() => {
-    setSimLevel(String(charLevel));
-    setVipSimLevel(String(charLevel));
-    setCouponSimLevel(String(charLevel));
-    setMekaSimLevel(String(charLevel));
-    setBlueSimLevel(String(charLevel));
+    const lv = hasCharacter ? String(charLevel) : '';
+    setSimLevel(lv);
+    setVipSimLevel(lv);
+    setCouponSimLevel(lv);
+    setMekaSimLevel(lv);
+    setBlueSimLevel(lv);
     setSimResult(null);
     setVipSimResult(null);
     setCouponSimResult(null);
@@ -921,7 +922,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
     setVipRevResult(null);
   // slotKey가 바뀌면 charLevel이 같아도 강제 갱신
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slotKey, charLevel]);
+  }, [slotKey, charLevel, hasCharacter]);
 
   useEffect(() => {
     setParkBonusInput(monsterParkBonus > 0 ? String(monsterParkBonus) : '');
@@ -1547,7 +1548,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400 shrink-0">현재 레벨</span>
                         <div className="relative flex items-center">
                           <input type="text" inputMode="numeric" value={mekaSimLevel} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setMekaSimLevel(v); }} className="w-20 text-center text-[12px] border-2 border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-zinc-800 rounded px-1.5 py-0 h-[24px] text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 pr-7"
-                            placeholder="280" />
+                            placeholder="0" />
                           <span className="absolute right-1.5 text-[10px] text-gray-400 dark:text-zinc-500 pointer-events-none">레벨</span>
                         </div>
                       </div>
@@ -1648,7 +1649,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400 shrink-0">현재 레벨</span>
                         <div className="relative flex items-center">
                           <input type="text" inputMode="numeric" value={blueSimLevel} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setBlueSimLevel(v); }} className="w-20 text-center text-[12px] border-2 border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-zinc-800 rounded px-1.5 py-0 h-[24px] text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 pr-7"
-                            placeholder="260" />
+                            placeholder="0" />
                           <span className="absolute right-1.5 text-[10px] text-gray-400 dark:text-zinc-500 pointer-events-none">레벨</span>
                         </div>
                       </div>
@@ -1889,7 +1890,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400 shrink-0">목표 레벨</span>
                         <div className="relative flex items-center">
                           <input type="text" inputMode="numeric" value={mekaRevTarget} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setMekaRevTarget(v); }} className="w-20 text-center text-[12px] border-2 border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-zinc-800 rounded px-1.5 py-0 h-[24px] text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 pr-7"
-                            placeholder="290" />
+                            placeholder="0" />
                           <span className="absolute right-1.5 text-[10px] text-gray-400 dark:text-zinc-500 pointer-events-none">레벨</span>
                         </div>
                       </div>
@@ -1952,7 +1953,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400 shrink-0">목표 레벨</span>
                         <div className="relative flex items-center">
                           <input type="text" inputMode="numeric" value={couponRevTarget} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setCouponRevTarget(v); }} className="w-20 text-center text-[12px] border-2 border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-zinc-800 rounded px-1.5 py-0 h-[24px] text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 pr-7"
-                            placeholder="280" />
+                            placeholder="0" />
                           <span className="absolute right-1.5 text-[10px] text-gray-400 dark:text-zinc-500 pointer-events-none">레벨</span>
                         </div>
                       </div>
@@ -2024,7 +2025,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400 shrink-0">목표 레벨</span>
                         <div className="relative flex items-center">
                           <input type="text" inputMode="numeric" value={vipRevTarget} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setVipRevTarget(v); }} className="w-20 text-center text-[12px] border-2 border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-zinc-800 rounded px-1.5 py-0 h-[24px] text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 pr-7"
-                            placeholder="280" />
+                            placeholder="0" />
                           <span className="absolute right-1.5 text-[10px] text-gray-400 dark:text-zinc-500 pointer-events-none">레벨</span>
                         </div>
                       </div>
@@ -2104,7 +2105,7 @@ export default function ExpContentsTab({ charLevel, monsterLevel, monsterParkBon
                         <span className="text-sm text-gray-500 dark:text-zinc-400 shrink-0">목표 레벨</span>
                         <div className="relative flex items-center">
                           <input type="text" inputMode="numeric" value={blueRevTarget} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setBlueRevTarget(v); }} className="w-20 text-center text-[12px] border-2 border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-zinc-800 rounded px-1.5 py-0 h-[24px] text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 pr-7"
-                            placeholder="280" />
+                            placeholder="0" />
                           <span className="absolute right-1.5 text-[10px] text-gray-400 dark:text-zinc-500 pointer-events-none">레벨</span>
                         </div>
                       </div>

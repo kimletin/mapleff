@@ -38,14 +38,26 @@ export default function HuntingGroundDetailModal({ region, groundName, imageSrc,
           >×</button>
         </div>
 
-        <img
-          src={imageSrc}
-          alt={groundName}
-          onClick={() => setZoomed(true)}
-          className="w-full rounded-lg border border-gray-200 dark:border-zinc-700 mb-4 bg-gray-50 dark:bg-zinc-800 cursor-zoom-in"
-        />
+        <div className="relative mb-4">
+          <img
+            src={imageSrc}
+            alt={groundName}
+            onClick={() => setZoomed(true)}
+            className="w-full rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 cursor-zoom-in"
+          />
+          <div className="absolute bottom-2 right-2 flex flex-col gap-1 bg-black/50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2">
+              <svg viewBox="0 0 16 24" className="w-4 h-6 shrink-0"><ellipse cx="8" cy="12" rx="6" ry="10" fill="none" stroke="#00effe" strokeWidth="2.5" /></svg>
+              <span className="text-xs text-white">히든포탈</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg viewBox="0 0 16 20" className="w-4 h-5 shrink-0"><path d="M8 2 L8 14 M4 10 L8 16 L12 10" stroke="#ffff00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+              <span className="text-xs text-white">캐릭터 젠 위치</span>
+            </div>
+          </div>
+        </div>
 
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-wrap justify-start gap-3">
           {monsters.length > 0 ? monsters.map(mon => (
             <div key={mon.name} className="w-80 rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/50 p-4 flex items-center gap-3">
               <div className="w-28 h-28 shrink-0 flex items-center justify-center">

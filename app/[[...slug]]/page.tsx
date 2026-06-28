@@ -901,7 +901,7 @@ export default function Home() {
                   <ExpInfoTab charLevel={inputs.charLevel} monsterLevel={inputs.monsterLevel} huntingMobs={inputs.huntingMobs} hasCharacter={numSlots > 0} />
                 )}
                 {activeTab === TABS[3] && (
-                  <HuntingGroundTab charLevel={inputs.charLevel} huntingRegion={inputs.huntingRegion} huntingGround={inputs.huntingGround} hasCharacter={numSlots > 0} />
+                  <HuntingGroundTab charLevel={inputs.charLevel} huntingRegion={inputs.huntingRegion} huntingGround={inputs.huntingGround} hasCharacter={numSlots > 0} onAddCharacter={handleAddCharacter} />
                 )}
                 {activeTab === TABS[4] && (
                   <InfoCenterTab />

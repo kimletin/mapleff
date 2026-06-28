@@ -5,13 +5,65 @@ import { HUNTING_REGIONS, type HuntingGround } from '@/data/huntingGrounds';
 import { MONSTER_EXP } from '@/data/monsterExp';
 import { getMonstersAtMap } from '@/data/regionMonsters';
 import HuntingGroundDetailModal from '@/components/HuntingGroundDetailModal';
-import Num from '@/components/Num';
+
+function rankColor(rank: number, total: number): string {
+  const t = total <= 1 ? 0 : (rank - 1) / (total - 1);
+  let r, g, b;
+  if (t <= 0.5) {
+    const s = t * 2;
+    r = Math.round(34 + (234 - 34) * s);
+    g = Math.round(197 + (179 - 197) * s);
+    b = Math.round(94 + (8 - 94) * s);
+  } else {
+    const s = (t - 0.5) * 2;
+    r = Math.round(234 + (220 - 234) * s);
+    g = Math.round(179 + (38 - 179) * s);
+    b = Math.round(8 + (38 - 8) * s);
+  }
+  return `rgb(${r},${g},${b})`;
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  return (
+    <span className="min-w-[20px] h-5 px-1 rounded bg-orange-500 text-white text-xs flex items-center justify-center shrink-0 font-bold">
+      {rank}
+    </span>
+  );
+}
+
+function getExpPenalty(diff: number): number {
+  if (diff >= 40) return 0.70;
+  if (diff >= 21) return 0.71 + (39 - diff) * 0.01;
+  if (diff >= 19) return 0.95;
+  if (diff >= 17) return 0.96;
+  if (diff >= 15) return 0.97;
+  if (diff >= 13) return 0.98;
+  if (diff >= 11) return 0.99;
+  if (diff === 10) return 1.00;
+  if (diff >= 5)  return 1.05;
+  if (diff >= 2)  return 1.10;
+  if (diff >= -1) return 1.20;
+  if (diff >= -4) return 1.10;
+  if (diff >= -9) return 1.05;
+  if (diff >= -20) return 1.00 + (diff + 10) * 0.01;
+  if (diff >= -35) return 0.70 + (diff + 21) * 0.04;
+  if (diff >= -39) return 0.10;
+  return 0;
+}
+
+function computeGroundScore(g: HuntingGround, charLevel: number): number {
+  return g.mobs.reduce((sum, mob) => {
+    const exp = MONSTER_EXP[mob.level] ?? 0;
+    return sum + exp * mob.count * getExpPenalty(charLevel - mob.level);
+  }, 0);
+}
 
 interface Props {
   charLevel: number;
   huntingRegion: string;
   huntingGround: string;
   hasCharacter?: boolean;
+  onAddCharacter?: () => void;
 }
 
 const REGION_LEVEL_RANGE: Record<string, string> = {
@@ -25,7 +77,7 @@ const REGION_LEVEL_RANGE: Record<string, string> = {
   '기어드락':   'Lv.295-299',
 };
 
-export default function HuntingGroundTab({ charLevel, huntingRegion, huntingGround, hasCharacter = true }: Props) {
+export default function HuntingGroundTab({ charLevel, huntingRegion, huntingGround, hasCharacter = true, onAddCharacter }: Props) {
   const [selectedRegion, setSelectedRegion] = useState(huntingRegion || '세르니움');
   const [detailGround, setDetailGround] = useState<HuntingGround | null>(null);
 
@@ -57,8 +109,8 @@ export default function HuntingGroundTab({ charLevel, huntingRegion, huntingGrou
   return (
     <>
     <div className="flex gap-4 items-start">
-      {/* 지역 선택 (2열 그리드) */}
-      <div className="grid grid-cols-2 gap-1.5 shrink-0 w-[186px] self-start">
+      {/* 지역 선택 (1열) */}
+      <div className="grid grid-cols-1 gap-1.5 shrink-0 w-[90px] self-start">
         {HUNTING_REGIONS.map(r => (
           <button
             key={r.name}
@@ -80,26 +132,24 @@ export default function HuntingGroundTab({ charLevel, huntingRegion, huntingGrou
       </div>
 
       {/* 테이블 카드 */}
-      <div className="flex-1 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden">
+      <div className="flex-1 max-h-[762px] bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
         <div className="bg-orange-200 dark:bg-orange-900/50 border-b border-orange-200 dark:border-orange-800 px-4 py-2.5 shrink-0">
           <h3 className="text-sm font-semibold text-center text-gray-800 dark:text-zinc-100">
             {region.name}
           </h3>
         </div>
-        <div ref={scrollRef} className="overflow-y-auto" style={{maxHeight:'644px'}}>
+        <div ref={scrollRef} className="overflow-y-auto flex-1 min-h-0">
           <table className="table-fixed text-sm border-collapse w-full">
             <colgroup>
-              <col style={{ width: '30%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '12%' }} />
+              <col style={{ width: '46%' }} />
               <col style={{ width: '18%' }} />
+              <col style={{ width: '17%' }} />
+              <col style={{ width: '19%' }} />
             </colgroup>
             <thead>
               <tr className="bg-gray-100 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-600">
                 <th className="text-center px-4 py-2 text-gray-600 dark:text-zinc-400 font-bold whitespace-nowrap">사냥터</th>
-                <th className="text-center px-4 py-2 text-gray-600 dark:text-zinc-400 font-bold whitespace-nowrap">몬스터 레벨</th>
-                <th className="text-center px-4 py-2 text-gray-600 dark:text-zinc-400 font-bold whitespace-nowrap">순 경험치</th>
+                <th className="text-center px-4 py-2 text-gray-600 dark:text-zinc-400 font-bold whitespace-nowrap">몹렙</th>
                 <th className="text-center px-4 py-2 text-gray-600 dark:text-zinc-400 font-bold whitespace-nowrap">마리수</th>
                 <th className="text-center px-4 py-2 text-gray-600 dark:text-zinc-400 font-bold whitespace-nowrap">세부 정보</th>
               </tr>
@@ -109,6 +159,15 @@ export default function HuntingGroundTab({ charLevel, huntingRegion, huntingGrou
                 const isMe = hasCharacter && selectedRegion === huntingRegion && g.name === huntingGround;
                 const rowBg = isMe ? 'bg-orange-50 dark:bg-orange-900/40 font-bold' : 'hover:bg-gray-50 dark:hover:bg-gray-700';
                 const textColor = isMe ? 'text-orange-600' : 'text-gray-700 dark:text-zinc-300';
+                const detailBtn = (
+                  <button
+                    onClick={() => setDetailGround(g)}
+                    aria-label="세부 정보"
+                    className="ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-md border border-gray-200 dark:border-zinc-600 text-gray-400 dark:text-zinc-500 hover:text-orange-500 hover:border-orange-400 transition-colors cursor-pointer shrink-0"
+                  >
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3.5 h-3.5"><circle cx="9" cy="9" r="6" /><path d="M14 14l4 4" strokeLinecap="round" /></svg>
+                  </button>
+                );
 
                 if (g.mobs.length > 1) {
                   const levelStr = g.mobs.map(m => m.level).join('/');
@@ -120,21 +179,8 @@ export default function HuntingGroundTab({ charLevel, huntingRegion, huntingGrou
                         {isMe && <span className="ml-1.5 text-xs bg-orange-500 dark:bg-orange-700 text-white px-1.5 py-0.5 rounded-full">나</span>}
                       </td>
                       <td className={'px-4 py-1.5 text-center ' + textColor}>{levelStr}</td>
-                      <td className={'px-4 py-1.5 text-center whitespace-nowrap ' + textColor}>
-                        {g.mobs.map((m, mi) => (
-                          <span key={mi}>{mi > 0 && '/'}<Num n={MONSTER_EXP[m.level] ?? 0} /></span>
-                        ))}
-                      </td>
-                      <td className={'px-4 py-1.5 ' + textColor} style={{textAlign:'center'}}>{totalCount}</td>
-                      <td className="px-4 py-1.5 text-center">
-                        <button
-                          onClick={() => setDetailGround(g)}
-                          aria-label="세부 정보"
-                          className="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200 dark:border-zinc-600 text-gray-500 dark:text-zinc-400 hover:text-orange-500 hover:border-orange-400 transition-colors cursor-pointer"
-                        >
-                          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><circle cx="9" cy="9" r="6" /><path d="M14 14l4 4" strokeLinecap="round" /></svg>
-                        </button>
-                      </td>
+                      <td className={'px-4 py-1.5 text-center ' + textColor}>{totalCount}</td>
+                      <td className="px-4 py-1.5 text-center">{detailBtn}</td>
                     </tr>
                   );
                 }
@@ -151,17 +197,8 @@ export default function HuntingGroundTab({ charLevel, huntingRegion, huntingGrou
                       </td>
                     ) : null}
                     <td className={'px-4 py-1.5 text-center ' + textColor}>{mob.level}</td>
-                    <td className={'px-4 py-1.5 text-center ' + textColor}><Num n={MONSTER_EXP[mob.level] ?? 0} /></td>
                     <td className={'px-4 py-1.5 text-center ' + textColor}>{mob.count}</td>
-                    <td className="px-4 py-1.5 text-center">
-                      <button
-                        onClick={() => setDetailGround(g)}
-                        aria-label="세부 정보"
-                        className="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200 dark:border-zinc-600 text-gray-500 dark:text-zinc-400 hover:text-orange-500 hover:border-orange-400 transition-colors cursor-pointer"
-                      >
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><circle cx="9" cy="9" r="6" /><path d="M14 14l4 4" strokeLinecap="round" /></svg>
-                      </button>
-                    </td>
+                    {j === 0 ? <td className="px-4 py-1.5 text-center" rowSpan={g.mobs.length}>{detailBtn}</td> : null}
                   </tr>
                 ));
               })}
@@ -169,6 +206,57 @@ export default function HuntingGroundTab({ charLevel, huntingRegion, huntingGrou
           </table>
         </div>
       </div>
+
+      {/* 우측 순위 카드 */}
+      {(() => {
+        const all = HUNTING_REGIONS.flatMap(r => {
+          // 지역 입장 레벨 = 해당 지역 최소 몹 레벨. 입장 가능한 지역의 사냥터만 포함.
+          const regionEntryLevel = Math.min(...r.grounds.flatMap(g => g.mobs.map(m => m.level)));
+          return charLevel >= regionEntryLevel ? r.grounds : [];
+        });
+        const scored = all
+          .map(g => ({ name: g.name, score: computeGroundScore(g, charLevel) }))
+          .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'ko'));
+        const top15 = scored.slice(0, 20);
+        const maxScore = top15[0]?.score ?? 1;
+        return (
+          <div className="w-[329px] shrink-0 h-[762px] bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-700 shadow-sm overflow-hidden flex flex-col">
+            <div className="bg-orange-200 dark:bg-orange-900/50 border-b border-orange-200 dark:border-orange-800 px-4 py-2.5 shrink-0">
+              <h3 className="text-sm font-semibold text-center text-gray-800 dark:text-zinc-100">사냥터 효율 순위</h3>
+            </div>
+            <div className="overflow-y-auto flex-1 min-h-0 flex flex-col">
+              {!hasCharacter ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                  <p className="text-sm text-gray-400 dark:text-zinc-500">캐릭터를 추가해주세요</p>
+                  {onAddCharacter && (
+                    <button onClick={onAddCharacter} className="px-5 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors cursor-pointer">캐릭터 추가</button>
+                  )}
+                </div>
+              ) : top15.map((item, idx) => {
+                const isMe = hasCharacter && item.name === huntingGround;
+                const pct = maxScore > 0 ? (item.score / maxScore * 100).toFixed(1) : '0.0';
+                return (
+                  <div
+                    key={item.name}
+                    className={'flex items-center gap-2 px-4 h-[36px] border-b border-gray-100 dark:border-zinc-700 transition-colors ' + (isMe ? 'bg-orange-50 dark:bg-orange-900/40' : 'hover:bg-gray-50 dark:hover:bg-gray-700')}
+                  >
+                    <RankBadge rank={idx + 1} />
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      <span className={'text-sm truncate ' + (isMe ? 'font-bold text-orange-600' : 'text-gray-800 dark:text-zinc-200')}>
+                        {item.name}
+                      </span>
+                      {isMe && <span className="text-xs bg-orange-500 dark:bg-orange-700 text-white px-1.5 py-0.5 rounded-full shrink-0">나</span>}
+                    </div>
+                    <span className="text-sm font-semibold shrink-0" style={{ color: rankColor(idx + 1, top15.length) }}>
+                      {pct}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
     {detailGround && (
       <HuntingGroundDetailModal
